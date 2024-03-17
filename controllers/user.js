@@ -7,8 +7,18 @@ exports.signup = async (req, res) => {
   let error = "";
   try {
     await user.save();
+
+    console.log(user);
+
+    const withOutPassword = {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      _id: user._id,
+    };
+
     res.json({
-      user,
+      withOutPassword,
     });
   } catch (err) {
     error = errorHandler(err);
