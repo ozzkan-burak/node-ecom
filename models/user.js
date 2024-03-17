@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const argon2 = require("argon2");
+const bcrypt = require("bcrypt");
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    hashed_password: {
+    password: {
       type: String,
       required: true,
     },
@@ -23,32 +23,31 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    salt: String,
     role: {
       type: Number,
       default: 0,
     },
     history: {
       type: Array,
-      defult: [],
+      default: [],
     },
   },
   { timestamps: true }
 );
 
-// argo2 paketi ile password hash prosesi
-userSchema.pre("save", async function (next) {
-  if (!this.hashed_password) {
-    return next();
+userSchema.pre("save", async function preSave(next) {
+  if (this.isNew) {
+    try {
+      console.log("PASSWORD CONVERTING INTO HASH");
+      this.password = await bcrypt.hash(this.password, 10);
+      return next();
+    } catch (err) {
+      return next(err);
+    }
   }
-
-  const hash = await argon2.hash(this.hashed_password);
-  this.hashed_password = hash;
   next();
 });
 
-userSchema.methods.verify = async function (password) {
-  return await argon2.verify(this.hashed_password, password);
-};
+const User = mongoose.model("Users", userSchema);
 
 module.exports = mongoose.model("User", userSchema);
