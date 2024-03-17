@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
-const cyrpto = require("cyrpto");
-const uuidv1 = require("uuid/v1");
+const argon2 = require("argon2");
 
 const userSchema = new mongoose.Schema(
   {
@@ -37,31 +36,19 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// virtual field
-userSchema
-  .virtual("password")
-  .set(function (password) {
-    this._password = password;
-    this.salt = uuidv1();
-    this.hashed_password = this.encryptPassword(password);
-  })
-  .get(function () {
-    return this._password;
-  });
+// argo2 paketi ile password hash prosesi
+userSchema.pre("save", async function (next) {
+  if (!this.hashed_password) {
+    return next();
+  }
 
-userSchema.methods = {
-  encryptPassword: function (password) {
-    if (!password) return "";
+  const hash = await argon2.hash(this.hashed_password);
+  this.hashed_password = hash;
+  next();
+});
 
-    try {
-      return cyrpto
-        .createHmac("sha1", this.salt)
-        .update(password)
-        .digest("hex");
-    } catch (err) {
-      return "";
-    }
-  },
+userSchema.methods.verify = async function (password) {
+  return await argon2.verify(this.hashed_password, password);
 };
 
 module.exports = mongoose.model("User", userSchema);
